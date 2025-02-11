@@ -4,8 +4,10 @@ import GameLayout from "@/components/common/GameLayout";
 import VoiceFeedback from "@/components/common/VoiceFeedback";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from 'canvas-confetti';
+import CountingGame from "./CountingGame";
 
 interface MathGameProps {
   mode: GameMode;
@@ -81,70 +83,83 @@ export default function MathGame({ mode, onModeChange }: MathGameProps) {
 
   return (
     <GameLayout title="Basic Mathematics" mode={mode} onModeChange={onModeChange}>
-      <div className="max-w-2xl mx-auto space-y-8">
-        <Card className="p-8 bg-white shadow-lg">
-          <div className="text-center text-4xl mb-8 space-x-4 font-bold text-blue-900">
-            <span>{question.num1}</span>
-            <span>{question.operation}</span>
-            <span>{question.num2}</span>
-            <span>=</span>
-            <span>?</span>
-          </div>
+      <Tabs defaultValue="arithmetic" className="max-w-4xl mx-auto">
+        <TabsList className="grid w-full grid-cols-2 mb-8">
+          <TabsTrigger value="counting">Number Learning</TabsTrigger>
+          <TabsTrigger value="arithmetic">Addition & Subtraction</TabsTrigger>
+        </TabsList>
 
-          <div className="grid grid-cols-2 gap-4">
-            {question.options.map((option) => (
-              <Button
-                key={option}
-                onClick={() => handleAnswer(option)}
-                disabled={disabled}
-                variant={
-                  feedback && option === question.answer
-                    ? "default"
-                    : feedback?.correct === false && option === question.answer
-                    ? "destructive"
-                    : "outline"
-                }
-                className={`text-2xl h-16 ${
-                  feedback && option === question.answer
-                    ? "bg-green-500 hover:bg-green-600"
-                    : "hover:bg-blue-50"
-                }`}
-              >
-                {option}
-              </Button>
-            ))}
-          </div>
-        </Card>
+        <TabsContent value="counting">
+          <CountingGame />
+        </TabsContent>
 
-        <AnimatePresence>
-          {feedback && (
-            <motion.div
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0, opacity: 0 }}
-              className={`text-center text-3xl font-bold ${
-                feedback.correct ? "text-green-500" : "text-red-500"
-              }`}
-            >
-              {feedback.message}
-              {feedback.correct && (
+        <TabsContent value="arithmetic">
+          <div className="space-y-8">
+            <Card className="p-8 bg-white shadow-lg">
+              <div className="text-center text-4xl mb-8 space-x-4 font-bold text-blue-900">
+                <span>{question.num1}</span>
+                <span>{question.operation}</span>
+                <span>{question.num2}</span>
+                <span>=</span>
+                <span>?</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {question.options.map((option) => (
+                  <Button
+                    key={option}
+                    onClick={() => handleAnswer(option)}
+                    disabled={disabled}
+                    variant={
+                      feedback && option === question.answer
+                        ? "default"
+                        : feedback?.correct === false && option === question.answer
+                        ? "destructive"
+                        : "outline"
+                    }
+                    className={`text-2xl h-16 ${
+                      feedback && option === question.answer
+                        ? "bg-green-500 hover:bg-green-600"
+                        : "hover:bg-blue-50"
+                    }`}
+                  >
+                    {option}
+                  </Button>
+                ))}
+              </div>
+            </Card>
+
+            <AnimatePresence>
+              {feedback && (
                 <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="text-4xl mt-2"
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0, opacity: 0 }}
+                  className={`text-center text-3xl font-bold ${
+                    feedback.correct ? "text-green-500" : "text-red-500"
+                  }`}
                 >
-                  🎉
+                  {feedback.message}
+                  {feedback.correct && (
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="text-4xl mt-2"
+                    >
+                      🎉
+                    </motion.div>
+                  )}
                 </motion.div>
               )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </AnimatePresence>
 
-        <VoiceFeedback
-          message={feedback?.message || ""}
-          play={!!feedback}
-        />
-      </div>
+            <VoiceFeedback
+              message={feedback?.message || ""}
+              play={!!feedback}
+            />
+          </div>
+        </TabsContent>
+      </Tabs>
     </GameLayout>
   );
 }

@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import confetti from 'canvas-confetti';
 
-interface ColorShapeGameProps {
+interface ShapeGameProps {
   mode: GameMode;
   onModeChange: (mode: GameMode) => void;
 }
@@ -15,50 +15,34 @@ const SHAPES = [
   { 
     name: "Circle",
     shape: "⭕",
-    colors: [
-      { name: "Red", colorClass: "bg-red-500 hover:bg-red-600", textColor: "text-red-500" },
-      { name: "Blue", colorClass: "bg-blue-500 hover:bg-blue-600", textColor: "text-blue-500" },
-      { name: "Yellow", colorClass: "bg-yellow-500 hover:bg-yellow-600", textColor: "text-yellow-500" },
-      { name: "Green", colorClass: "bg-green-500 hover:bg-green-600", textColor: "text-green-500" }
-    ]
+    description: "A round shape with no corners"
   },
   { 
     name: "Square",
     shape: "⬛",
-    colors: [
-      { name: "Red", colorClass: "bg-red-500 hover:bg-red-600", textColor: "text-red-500" },
-      { name: "Blue", colorClass: "bg-blue-500 hover:bg-blue-600", textColor: "text-blue-500" },
-      { name: "Yellow", colorClass: "bg-yellow-500 hover:bg-yellow-600", textColor: "text-yellow-500" },
-      { name: "Green", colorClass: "bg-green-500 hover:bg-green-600", textColor: "text-green-500" }
-    ]
+    description: "A shape with four equal sides and four corners"
   },
   { 
     name: "Triangle",
     shape: "🔺",
-    colors: [
-      { name: "Red", colorClass: "bg-red-500 hover:bg-red-600", textColor: "text-red-500" },
-      { name: "Blue", colorClass: "bg-blue-500 hover:bg-blue-600", textColor: "text-blue-500" },
-      { name: "Yellow", colorClass: "bg-yellow-500 hover:bg-yellow-600", textColor: "text-yellow-500" },
-      { name: "Green", colorClass: "bg-green-500 hover:bg-green-600", textColor: "text-green-500" }
-    ]
+    description: "A shape with three sides and three corners"
   },
   { 
     name: "Star",
     shape: "⭐",
-    colors: [
-      { name: "Red", colorClass: "bg-red-500 hover:bg-red-600", textColor: "text-red-500" },
-      { name: "Blue", colorClass: "bg-blue-500 hover:bg-blue-600", textColor: "text-blue-500" },
-      { name: "Yellow", colorClass: "bg-yellow-500 hover:bg-yellow-600", textColor: "text-yellow-500" },
-      { name: "Green", colorClass: "bg-green-500 hover:bg-green-600", textColor: "text-green-500" }
-    ]
+    description: "A shape with five points"
+  },
+  { 
+    name: "Heart",
+    shape: "❤️",
+    description: "A shape that represents love"
   }
 ];
 
-export default function ColorShapeGame({ mode, onModeChange }: ColorShapeGameProps) {
+export default function ShapeGame({ mode, onModeChange }: ShapeGameProps) {
   const [currentShape, setCurrentShape] = useState(() => {
     const shape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
-    const color = shape.colors[Math.floor(Math.random() * shape.colors.length)];
-    return { ...shape, correctColor: color };
+    return shape;
   });
   const [feedback, setFeedback] = useState<{ correct: boolean; message: string } | null>(null);
   const [disabled, setDisabled] = useState(false);
@@ -71,14 +55,14 @@ export default function ColorShapeGame({ mode, onModeChange }: ColorShapeGamePro
     });
   }
 
-  const handleColorSelect = (selectedColor: string) => {
+  const handleShapeSelect = (selectedShape: string) => {
     if (disabled) return;
 
-    const isCorrect = selectedColor === currentShape.correctColor.name;
+    const isCorrect = selectedShape === currentShape.name;
     setFeedback({
       correct: isCorrect,
       message: isCorrect 
-        ? `Yes! The ${currentShape.name} is ${currentShape.correctColor.name}!` 
+        ? `Yes! This is a ${currentShape.name}! ${currentShape.description}` 
         : "Try again!"
     });
 
@@ -87,52 +71,57 @@ export default function ColorShapeGame({ mode, onModeChange }: ColorShapeGamePro
       setDisabled(true);
       setTimeout(() => {
         setFeedback(null);
-        const newShape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
-        const newColor = newShape.colors[Math.floor(Math.random() * newShape.colors.length)];
-        setCurrentShape({ ...newShape, correctColor: newColor });
+        let newShape;
+        do {
+          newShape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+        } while (newShape.name === currentShape.name);
+        setCurrentShape(newShape);
         setDisabled(false);
       }, 2000);
     } else if (mode === "quiz") {
       setDisabled(true);
       setTimeout(() => {
         setFeedback(null);
-        const newShape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
-        const newColor = newShape.colors[Math.floor(Math.random() * newShape.colors.length)];
-        setCurrentShape({ ...newShape, correctColor: newColor });
+        let newShape;
+        do {
+          newShape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+        } while (newShape.name === currentShape.name);
+        setCurrentShape(newShape);
         setDisabled(false);
       }, 2000);
     }
   };
 
   return (
-    <GameLayout title="Colors & Shapes" mode={mode} onModeChange={onModeChange}>
+    <GameLayout title="Shape Recognition" mode={mode} onModeChange={onModeChange}>
       <div className="max-w-4xl mx-auto space-y-8">
         <Card className="p-8 bg-white shadow-lg">
           <motion.div
-            key={`${currentShape.name}-${currentShape.correctColor.name}`}
+            key={currentShape.name}
             initial={{ scale: 0.8 }}
             animate={{ scale: 1 }}
             className="text-center"
           >
-            <div className={`text-8xl mb-4 ${currentShape.correctColor.textColor}`}>
+            <div className="text-8xl mb-4">
               {currentShape.shape}
             </div>
             <div className="text-2xl mb-8 text-blue-900 font-bold">
-              What color is this {currentShape.name.toLowerCase()}?
+              What shape is this?
             </div>
           </motion.div>
 
           <div className="grid grid-cols-2 gap-4">
-            {currentShape.colors.map((color) => (
+            {SHAPES.map((shape) => (
               <Card
-                key={color.name}
-                className={`p-8 cursor-pointer transition-all ${
-                  !disabled ? color.colorClass : 'opacity-75'
+                key={shape.name}
+                className={`p-8 cursor-pointer transition-all hover:bg-blue-50 ${
+                  disabled ? 'opacity-75' : ''
                 }`}
-                onClick={() => handleColorSelect(color.name)}
+                onClick={() => handleShapeSelect(shape.name)}
               >
-                <div className="text-center text-white text-xl font-bold">
-                  {color.name}
+                <div className="text-center">
+                  <div className="text-4xl mb-2">{shape.shape}</div>
+                  <div className="text-xl font-bold text-blue-900">{shape.name}</div>
                 </div>
               </Card>
             ))}
