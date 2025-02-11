@@ -8,13 +8,13 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  sessionStore: session.SessionStore;
+  sessionStore: session.Store;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   currentId: number;
-  sessionStore: session.SessionStore;
+  sessionStore: session.Store;
 
   constructor() {
     this.users = new Map();
