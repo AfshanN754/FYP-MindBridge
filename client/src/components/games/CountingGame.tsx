@@ -35,6 +35,36 @@ const NUMBERS = [
     word: "five",
     path: "M 40 20 L 20 20 L 20 50 C 20 65 40 65 40 80 C 40 95 20 95 20 80",
     description: "Start with a top line, go down, then curve to make the bottom"
+  },
+  {
+    digit: 6,
+    word: "six",
+    path: "M 40 20 C 20 20 20 50 20 50 C 20 80 40 80 40 50 C 40 20 20 50 20 50",
+    description: "Make a curve that loops around at the bottom"
+  },
+  {
+    digit: 7,
+    word: "seven",
+    path: "M 20 20 L 40 20 L 20 80",
+    description: "Draw a line across the top, then diagonal down to the left"
+  },
+  {
+    digit: 8,
+    word: "eight",
+    path: "M 30 20 C 40 20 40 35 30 50 C 20 35 20 20 30 20 M 30 50 C 40 65 40 80 30 80 C 20 80 20 65 30 50",
+    description: "Make two circles, one on top of the other"
+  },
+  {
+    digit: 9,
+    word: "nine",
+    path: "M 30 20 C 40 20 40 35 30 50 C 20 35 20 20 30 20 M 30 50 L 30 80",
+    description: "Draw a circle at the top, then a line straight down"
+  },
+  {
+    digit: 10,
+    word: "ten",
+    path: "M 10 80 L 10 20 M 30 80 C 40 80 40 50 30 50 C 20 50 20 80 30 80",
+    description: "Draw one straight line, then a zero next to it"
   }
 ];
 
@@ -47,7 +77,7 @@ export default function CountingGame() {
     setCurrentNumber(number);
     setShowAnimation(true);
     setFeedback(`This is the number ${number.word}`);
-    
+
     confetti({
       particleCount: 50,
       spread: 30,

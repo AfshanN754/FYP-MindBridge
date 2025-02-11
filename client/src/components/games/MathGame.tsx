@@ -6,6 +6,17 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useLocation } from "wouter";
 import confetti from 'canvas-confetti';
 import CountingGame from "./CountingGame";
 
@@ -18,6 +29,9 @@ export default function MathGame({ mode, onModeChange }: MathGameProps) {
   const [question, setQuestion] = useState(generateQuestion());
   const [feedback, setFeedback] = useState<{ correct: boolean; message: string } | null>(null);
   const [disabled, setDisabled] = useState(false);
+  const [questionNumber, setQuestionNumber] = useState(1);
+  const [showExitDialog, setShowExitDialog] = useState(false);
+  const [, setLocation] = useLocation();
 
   function generateQuestion() {
     const num1 = Math.floor(Math.random() * 10) + 1;
@@ -68,7 +82,15 @@ export default function MathGame({ mode, onModeChange }: MathGameProps) {
       setDisabled(true);
       setTimeout(() => {
         setFeedback(null);
-        setQuestion(generateQuestion());
+        if (mode === "quiz" && questionNumber >= 10) {
+          // Quiz completed
+          setShowExitDialog(true);
+        } else {
+          setQuestion(generateQuestion());
+          if (mode === "quiz") {
+            setQuestionNumber(prev => prev + 1);
+          }
+        }
         setDisabled(false);
       }, 2000);
     } else if (mode === "quiz") {
@@ -76,8 +98,17 @@ export default function MathGame({ mode, onModeChange }: MathGameProps) {
       setTimeout(() => {
         setFeedback(null);
         setQuestion(generateQuestion());
+        setQuestionNumber(prev => prev + 1);
         setDisabled(false);
       }, 2000);
+    }
+  }
+
+  function handleExit() {
+    if (mode === "quiz") {
+      setShowExitDialog(true);
+    } else {
+      setLocation("/");
     }
   }
 
@@ -96,6 +127,12 @@ export default function MathGame({ mode, onModeChange }: MathGameProps) {
         <TabsContent value="arithmetic">
           <div className="space-y-8">
             <Card className="p-8 bg-white shadow-lg">
+              {mode === "quiz" && (
+                <div className="text-center mb-4 text-blue-900">
+                  Question {questionNumber} of 10
+                </div>
+              )}
+
               <div className="text-center text-4xl mb-8 space-x-4 font-bold text-blue-900">
                 <span>{question.num1}</span>
                 <span>{question.operation}</span>
@@ -160,6 +197,26 @@ export default function MathGame({ mode, onModeChange }: MathGameProps) {
           </div>
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Exit Quiz?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {questionNumber >= 10 
+                ? "Congratulations! You've completed all questions. Would you like to return to the home page?"
+                : "Are you sure you want to exit? Your progress will be lost."
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => setLocation("/")}>
+              Return Home
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </GameLayout>
   );
 }
