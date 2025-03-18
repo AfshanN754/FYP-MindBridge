@@ -1,222 +1,432 @@
-import { useState } from "react";
-import { GameMode } from "@shared/schema";
-import GameLayout from "@/components/common/GameLayout";
-import VoiceFeedback from "@/components/common/VoiceFeedback";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { useLocation } from "wouter";
-import confetti from 'canvas-confetti';
-import CountingGame from "./CountingGame";
+import { Button } from "@/components/ui/button";
+import confetti from "canvas-confetti";
+import { saveGameData } from "@/lib/firestore-utils"; // Import Firestore utility
 
-interface MathGameProps {
-  mode: GameMode;
-  onModeChange: (mode: GameMode) => void;
-}
-
-export default function MathGame({ mode, onModeChange }: MathGameProps) {
-  const [question, setQuestion] = useState(generateQuestion());
-  const [feedback, setFeedback] = useState<{ correct: boolean; message: string } | null>(null);
-  const [disabled, setDisabled] = useState(false);
-  const [questionNumber, setQuestionNumber] = useState(1);
-  const [showExitDialog, setShowExitDialog] = useState(false);
-  const [, setLocation] = useLocation();
-
-  function generateQuestion() {
-    const num1 = Math.floor(Math.random() * 10) + 1;
-    const num2 = Math.floor(Math.random() * 10) + 1;
-    const operation = Math.random() < 0.5 ? "+" : "-";
-    const answer = operation === "+" ? num1 + num2 : Math.max(num1, num2) - Math.min(num1, num2);
-    const options = generateOptions(answer);
-
-    return {
-      num1: Math.max(num1, num2),
-      num2: Math.min(num1, num2),
-      operation,
-      answer,
-      options,
-    };
+// Speech Synthesis
+const speak = (text: string) => {
+  if ("speechSynthesis" in window) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.8;
+    utterance.pitch = 1.2;
+    window.speechSynthesis.speak(utterance);
   }
+};
 
-  function generateOptions(answer: number) {
-    const options = [answer];
-    while (options.length < 4) {
-      const option = Math.max(0, answer + Math.floor(Math.random() * 5) * (Math.random() < 0.5 ? 1 : -1));
-      if (!options.includes(option)) {
-        options.push(option);
+const LEARNING_THEMES = [
+  { id: 1, emoji: "🐻", name: "Bears", color: "bg-amber-700" },
+  { id: 2, emoji: "🚗", name: "Cars", color: "bg-purple-500" },
+  { id: 3, emoji: "🌟", name: "Stars", color: "bg-blue-400" },
+];
+
+type GameMode = "counting" | "practice" | "quiz";
+type Operation = "add" | "subtract";
+type Difficulty = "easy" | "medium" | "hard";
+
+const MathWorld = () => {
+  const [mode, setMode] = useState<GameMode>("counting");
+  const [theme, setTheme] = useState(0);
+  const [rewards, setRewards] = useState<string[]>([]);
+
+  // Counting Mode State
+  const [count, setCount] = useState(0);
+  const [bounce, setBounce] = useState(false);
+
+  // Practice Mode State
+  const [firstNum, setFirstNum] = useState(2);
+  const [secondNum, setSecondNum] = useState(1);
+  const [currentOperation, setCurrentOperation] = useState<Operation>("add");
+
+  // Quiz Mode State
+  const [difficulty, setDifficulty] = useState<Difficulty>("easy");
+  const [quizScore, setQuizScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(60); // Updated timer
+  const [quizActive, setQuizActive] = useState(false);
+  const [totalQuestions, setTotalQuestions] = useState(5);
+  const [questionsAnswered, setQuestionsAnswered] = useState(0);
+  const [currentQuestion, setCurrentQuestion] = useState({
+    num1: 2,
+    num2: 1,
+    operation: "+",
+    answer: 3,
+    options: [3, 1, 4, 2],
+  });
+
+  // Counting Mode Component (unchanged)
+  const CountingMode = () => {
+    const handleAdd = () => {
+      const newCount = count + 1;
+      setCount(newCount);
+      speak(`${newCount} ${LEARNING_THEMES[theme].name.toLowerCase()}`);
+
+      if (newCount % 5 === 0) {
+        setRewards([...rewards, "🎖️"]);
+        confetti({ particleCount: 30, spread: 70, origin: { y: 0.6 } });
       }
-    }
-    return options.sort(() => Math.random() - 0.5);
-  }
+      setBounce(true);
+      setTimeout(() => setBounce(false), 200);
+    };
 
-  function triggerConfetti() {
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 }
-    });
-  }
+    return (
+      <div className={`p-6 rounded-2xl transition-colors duration-500 ${LEARNING_THEMES[theme].color}`}>
+        <div className="text-center">
+          <h2 className="text-4xl font-bold mb-6 text-white drop-shadow-md">
+            Let's Count {LEARNING_THEMES[theme].emoji}
+          </h2>
 
-  function handleAnswer(selectedAnswer: number) {
-    if (disabled) return;
+          <motion.div className="flex flex-wrap gap-4 justify-center mb-8" layout>
+            {Array.from({ length: count }).map((_, i) => (
+              <motion.div
+                key={i}
+                className="text-6xl cursor-pointer"
+                drag
+                dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+                whileHover={{ scale: 1.1 }}
+                animate={bounce ? { y: [-10, 0] } : {}}
+              >
+                {LEARNING_THEMES[theme].emoji}
+              </motion.div>
+            ))}
+          </motion.div>
 
-    const isCorrect = selectedAnswer === question.answer;
-    setFeedback({
-      correct: isCorrect,
-      message: isCorrect ? "Correct!" : "Try again!",
-    });
+          <div className="text-8xl mb-6 text-white font-bold drop-shadow-md">{count}</div>
 
-    if (isCorrect) {
-      triggerConfetti();
-      setDisabled(true);
-      setTimeout(() => {
-        setFeedback(null);
-        if (mode === "quiz" && questionNumber >= 10) {
-          // Quiz completed
-          setShowExitDialog(true);
-        } else {
-          setQuestion(generateQuestion());
-          if (mode === "quiz") {
-            setQuestionNumber(prev => prev + 1);
-          }
+          <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+            <Button
+              className="py-8 text-2xl shadow-lg bg-white/20 hover:bg-white/30 text-white"
+              onClick={handleAdd}
+            >
+              Add {LEARNING_THEMES[theme].emoji}
+            </Button>
+            <Button
+              className="py-8 text-2xl shadow-lg bg-white/20 hover:bg-white/30 text-white"
+              onClick={() => setCount(0)}
+            >
+              Reset
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Practice Mode Component (unchanged)
+  const PracticeMode = () => {
+    const result = currentOperation === "add" ? firstNum + secondNum : Math.max(firstNum - secondNum, 0);
+
+    const handleNumberChange = (num: number, isFirst: boolean) => {
+      if (isFirst) {
+        setFirstNum(Math.max(0, num));
+        if (currentOperation === "subtract") {
+          setSecondNum((prev) => Math.min(prev, num));
         }
-        setDisabled(false);
-      }, 2000);
-    } else if (mode === "quiz") {
-      setDisabled(true);
-      setTimeout(() => {
-        setFeedback(null);
-        setQuestion(generateQuestion());
-        setQuestionNumber(prev => prev + 1);
-        setDisabled(false);
-      }, 2000);
-    }
-  }
+      } else {
+        setSecondNum(Math.max(0, num));
+      }
+    };
 
-  function handleExit() {
-    if (mode === "quiz") {
-      setShowExitDialog(true);
-    } else {
-      setLocation("/");
-    }
-  }
+    const NumberGroup = ({
+      count,
+      onChange,
+      emoji,
+      max = Infinity,
+    }: {
+      count: number;
+      onChange: (num: number) => void;
+      emoji: string;
+      max?: number;
+    }) => (
+      <div className="flex flex-col items-center">
+        <div className="flex flex-wrap gap-4 justify-center">
+          {Array.from({ length: count }).map((_, i) => (
+            <motion.div
+              key={i}
+              className="text-6xl"
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ duration: 0.5 }}
+            >
+              {emoji}
+            </motion.div>
+          ))}
+        </div>
+        <div className="flex gap-2 mt-4">
+          <Button
+            className="bg-white/20 hover:bg-white/30 text-white"
+            onClick={() => onChange(count - 1)}
+            disabled={count <= 0}
+          >
+            -
+          </Button>
+          <Button
+            className="bg-white/20 hover:bg-white/30 text-white"
+            onClick={() => onChange(count + 1)}
+            disabled={count >= max}
+          >
+            +
+          </Button>
+        </div>
+      </div>
+    );
 
-  return (
-    <GameLayout title="Basic Mathematics" mode={mode} onModeChange={onModeChange}>
-      <Tabs defaultValue="arithmetic" className="max-w-4xl mx-auto">
-        <TabsList className="grid w-full grid-cols-2 mb-8">
-          <TabsTrigger value="counting">Number Learning</TabsTrigger>
-          <TabsTrigger value="arithmetic">Addition & Subtraction</TabsTrigger>
-        </TabsList>
+    return (
+      <div className={`p-6 rounded-2xl transition-colors duration-500 ${LEARNING_THEMES[theme].color}`}>
+        <div className="text-center">
+          <h2 className="text-4xl font-bold mb-6 text-white drop-shadow-md">
+            {currentOperation === "add" ? "➕ Let's Add" : "➖ Let's Subtract"}
+          </h2>
 
-        <TabsContent value="counting">
-          <CountingGame />
-        </TabsContent>
+          <div className="flex justify-center gap-8 mb-8">
+            <NumberGroup
+              count={firstNum}
+              onChange={(n: number) => handleNumberChange(n, true)}
+              emoji={LEARNING_THEMES[theme].emoji}
+            />
 
-        <TabsContent value="arithmetic">
-          <div className="space-y-8">
-            <Card className="p-8 bg-white shadow-lg">
-              {mode === "quiz" && (
-                <div className="text-center mb-4 text-blue-900">
-                  Question {questionNumber} of 10
-                </div>
-              )}
+            <div className="text-6xl text-white self-center">
+              {currentOperation === "add" ? "+" : "-"}
+            </div>
 
-              <div className="text-center text-4xl mb-8 space-x-4 font-bold text-blue-900">
-                <span>{question.num1}</span>
-                <span>{question.operation}</span>
-                <span>{question.num2}</span>
-                <span>=</span>
-                <span>?</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                {question.options.map((option) => (
-                  <Button
-                    key={option}
-                    onClick={() => handleAnswer(option)}
-                    disabled={disabled}
-                    variant={
-                      feedback && option === question.answer
-                        ? "default"
-                        : feedback?.correct === false && option === question.answer
-                        ? "destructive"
-                        : "outline"
-                    }
-                    className={`text-2xl h-16 ${
-                      feedback && option === question.answer
-                        ? "bg-green-500 hover:bg-green-600"
-                        : "hover:bg-blue-50"
-                    }`}
-                  >
-                    {option}
-                  </Button>
-                ))}
-              </div>
-            </Card>
-
-            <AnimatePresence>
-              {feedback && (
-                <motion.div
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0, opacity: 0 }}
-                  className={`text-center text-3xl font-bold ${
-                    feedback.correct ? "text-green-500" : "text-red-500"
-                  }`}
-                >
-                  {feedback.message}
-                  {feedback.correct && (
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="text-4xl mt-2"
-                    >
-                      🎉
-                    </motion.div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <VoiceFeedback
-              message={feedback?.message || ""}
-              play={!!feedback}
+            <NumberGroup
+              count={secondNum}
+              onChange={(n: number) => handleNumberChange(n, false)}
+              emoji={LEARNING_THEMES[theme].emoji}
+              max={currentOperation === "subtract" ? firstNum : Infinity}
             />
           </div>
-        </TabsContent>
-      </Tabs>
 
-      <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Exit Quiz?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {questionNumber >= 10 
-                ? "Congratulations! You've completed all questions. Would you like to return to the home page?"
-                : "Are you sure you want to exit? Your progress will be lost."
-              }
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => setLocation("/")}>
-              Return Home
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </GameLayout>
+          <div className="text-8xl text-white font-bold mb-8">= {result}</div>
+
+          <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+            <Button
+              className="bg-white/20 hover:bg-white/30 text-white"
+              onClick={() => setCurrentOperation("add")}
+            >
+              Switch to Addition
+            </Button>
+            <Button
+              className="bg-white/20 hover:bg-white/30 text-white"
+              onClick={() => setCurrentOperation("subtract")}
+            >
+              Switch to Subtraction
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+// Quiz Mode Component (updated timer logic)
+const QuizMode = () => {
+  const generateQuizQuestion = (maxNumber: number) => {
+    const operation = Math.random() > 0.5 ? "+" : "-";
+    let num1 = Math.floor(Math.random() * maxNumber) + 1;
+    let num2 =
+      operation === "+"
+        ? Math.floor(Math.random() * maxNumber) + 1
+        : Math.floor(Math.random() * num1) + 1;
+
+    const answer = operation === "+" ? num1 + num2 : num1 - num2;
+
+    const options = [answer];
+    while (options.length < 4) {
+      const option = answer + (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 3) + 1);
+      if (option > 0 && !options.includes(option)) options.push(option);
+    }
+
+    return {
+      num1,
+      num2,
+      operation,
+      answer,
+      options: options.sort(() => Math.random() - 0.5),
+    };
+  };
+
+  // Timer logic (starts at 0 and increments)
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (quizActive && questionsAnswered < totalQuestions) {
+      timer = setInterval(() => {
+        setTimeLeft((prev) => prev + 1); // Increment timer
+      }, 1000);
+    } else if (questionsAnswered >= totalQuestions) {
+      setQuizActive(false);
+      saveQuizData(); // Save data when quiz ends
+    }
+    return () => clearInterval(timer); // Cleanup timer
+  }, [quizActive, questionsAnswered, totalQuestions]);
+
+  const startQuiz = (level: Difficulty) => {
+    const settings = {
+      easy: { questions: 5 },
+      medium: { questions: 10 },
+      hard: { questions: 15 },
+    };
+
+    setDifficulty(level);
+    setQuizActive(true);
+    setTimeLeft(0); // Reset timer to 0
+    setTotalQuestions(settings[level].questions);
+    setQuizScore(0);
+    setQuestionsAnswered(0);
+    setCurrentQuestion(
+      generateQuizQuestion(level === "easy" ? 5 : level === "medium" ? 10 : 20)
+    );
+  };
+
+  const handleQuizAnswer = (selected: number) => {
+    if (questionsAnswered >= totalQuestions) return;
+
+    if (selected === currentQuestion.answer) {
+      setQuizScore((prev) => prev + 1);
+      confetti({ particleCount: 30, spread: 70 });
+    }
+
+    setQuestionsAnswered((prev) => prev + 1);
+
+    if (questionsAnswered + 1 < totalQuestions) {
+      setCurrentQuestion(
+        generateQuizQuestion(
+          difficulty === "easy" ? 5 : difficulty === "medium" ? 10 : 20
+        )
+      );
+    }
+  };
+
+  // Save quiz data to Firestore
+  const saveQuizData = async () => {
+    const gameResult = {
+      Age: parseInt(localStorage.getItem("age") || "0", 10),
+      Email: localStorage.getItem("email") || "N/A",
+      Game: "Math World",
+      Level: difficulty,
+      Name: localStorage.getItem("name") || "Guest",
+      Score: quizScore,
+      TimeTaken: timeLeft, // Store the final timer value
+    };
+
+    try {
+      await saveGameData(gameResult);
+      console.log("Game data saved to Firestore!");
+    } catch (error) {
+      console.error("Failed to save game data:", error);
+    }
+  };
+
+  return (
+    <div className="p-6 rounded-2xl bg-white shadow-lg">
+      <div className="text-center">
+        <h2 className="text-4xl font-bold mb-6 text-purple-600">
+          🧠 {LEARNING_THEMES[theme].emoji} Quiz -{" "}
+          {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
+        </h2>
+
+        <div className="text-2xl mb-4">
+          ⏳ {timeLeft}s | 🏆 {quizScore}/{totalQuestions} | 📝{" "}
+          {questionsAnswered}/{totalQuestions}
+        </div>
+
+        {questionsAnswered < totalQuestions ? (
+          <>
+            <div className="text-6xl mb-8">
+              {Array(currentQuestion.num1).fill(LEARNING_THEMES[theme].emoji).join(" ")}{" "}
+              {currentQuestion.operation}{" "}
+              {Array(currentQuestion.num2).fill(LEARNING_THEMES[theme].emoji).join(" ")} = ?
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-8">
+              {currentQuestion.options.map((option, index) => (
+                <motion.div
+                  key={index}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Button
+                    className="w-full py-6 text-2xl bg-purple-800 hover:bg-purple-800"
+                    onClick={() => handleQuizAnswer(option)}
+                  >
+                    {option} {LEARNING_THEMES[theme].emoji}
+                  </Button>
+                </motion.div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="text-2xl text-green-600 mb-4">
+            <div className="text-4xl font-bold mb-4">Quiz Complete! 🎉</div>
+            <div>Correct Answers: {quizScore}/{totalQuestions}</div>
+            <div>Success Rate: {Math.round((quizScore / totalQuestions) * 100)}%</div>
+            <div className="mt-4">
+              {Array(Math.floor(quizScore)).fill("⭐").join(" ")}
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-3 gap-4">
+          <Button className="bg-green-600 hover:bg-green-600" onClick={() => startQuiz("easy")}>
+            Easy 🌱 (5 Qs)
+          </Button>
+          <Button className="bg-yellow-600 hover:bg-yellow-600" onClick={() => startQuiz("medium")}>
+            Medium 🌸 (10 Qs)
+          </Button>
+          <Button className="bg-red-600 hover:bg-red-600" onClick={() => startQuiz("hard")}>
+            Hard 🌟 (15 Qs)
+          </Button>
+        </div>
+      </div>
+    </div>
   );
-}
+};
+  
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-500 to-purple-500">
+        <div className="container mx-auto p-4 max-w-3xl">
+          <h1 className="text-5xl font-bold text-center mb-8 text-purple-600 drop-shadow-md">
+            🎮 Play & Learn Math
+          </h1>
+  
+          {/* Mode Selector */}
+          <div className="grid grid-cols-3 gap-4 mb-8">
+            <Button
+              className={`text-xl ${mode === "counting" ? "bg-blue-500 text-white" : "bg-gray-100"}`}
+              onClick={() => setMode("counting")}
+            >
+              🧮 Counting
+            </Button>
+            <Button
+              className={`text-xl ${mode === "practice" ? "bg-blue-500 text-white" : "bg-gray-100"}`}
+              onClick={() => setMode("practice")}
+            >
+              ➕➖ Practice
+            </Button>
+            <Button
+              className={`text-xl ${mode === "quiz" ? "bg-blue-500 text-white" : "bg-gray-100"}`}
+              onClick={() => setMode("quiz")}
+            >
+              📝 Quiz
+            </Button>
+          </div>
+  
+          {/* Current Mode Display */}
+          {mode === "counting" && <CountingMode />}
+          {mode === "practice" && <PracticeMode />}
+          {mode === "quiz" && <QuizMode />}
+  
+          {/* Theme Selector */}
+          <div className="flex justify-center gap-4 mt-8">
+            {LEARNING_THEMES.map((t, index) => (
+              <Button
+                key={t.id}
+                className={`text-2xl p-2 ${theme === index ? "ring-4 ring-purple-700" : "bg-gray-500"}`}
+                onClick={() => setTheme(index)}
+              >
+                {t.emoji}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
+  export default MathWorld;

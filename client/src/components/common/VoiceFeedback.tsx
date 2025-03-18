@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 
 interface VoiceFeedbackProps {
+  text: string;
   message: string;
   play: boolean;
+  rate: number; // Add the rate property
 }
 
 export default function VoiceFeedback({ message, play }: VoiceFeedbackProps) {

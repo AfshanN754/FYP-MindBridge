@@ -1,7 +1,8 @@
+import express, { Express } from "express";
+import session from "express-session";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import { Express } from "express";
-import session from "express-session";
+import dotenv from "dotenv";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
@@ -12,6 +13,8 @@ declare global {
     interface User extends SelectUser {}
   }
 }
+
+dotenv.config(); // Load environment variables
 
 const scryptAsync = promisify(scrypt);
 
@@ -29,20 +32,28 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  const sessionSettings: session.SessionOptions = {
-    secret: process.env.REPL_ID!,
-    resave: false,
-    saveUninitialized: false,
-    store: storage.sessionStore,
-    cookie: {
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    }
-  };
+  // Session Configuration
+  app.use(
+    session({
+      secret:
+        process.env.SESSION_SECRET ||
+        "a3f1b0e4d9c2f8a6b7d1e3f6c9a5b4d8e7f2c1a9d3b6e4f0c8a5d7e1b3f9c2", // Updated Secret Key
+      resave: false,
+      saveUninitialized: false,
+      store: storage.sessionStore,
+      cookie: {
+        secure: process.env.NODE_ENV === "production",
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      },
+    })
+  );
 
-  app.use(session(sessionSettings));
+  // Initialize Passport.js
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Local Strategy for Authentication
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
@@ -54,7 +65,7 @@ export function setupAuth(app: Express) {
       } catch (err) {
         return done(err);
       }
-    }),
+    })
   );
 
   passport.serializeUser((user, done) => done(null, user.id));
@@ -67,6 +78,9 @@ export function setupAuth(app: Express) {
     }
   });
 
+  // Routes
+
+  // User Registration
   app.post("/api/register", async (req, res, next) => {
     try {
       const existingUser = await storage.getUserByUsername(req.body.username);
@@ -89,11 +103,12 @@ export function setupAuth(app: Express) {
     }
   });
 
+  // User Login
   app.post("/api/login", (req, res, next) => {
     passport.authenticate("local", (err, user, info) => {
       if (err) return next(err);
       if (!user) return res.status(401).json(info);
-      
+
       req.login(user, (err) => {
         if (err) return next(err);
         res.json(user);
@@ -101,6 +116,7 @@ export function setupAuth(app: Express) {
     })(req, res, next);
   });
 
+  // User Logout
   app.post("/api/logout", (req, res, next) => {
     req.logout((err) => {
       if (err) return next(err);
@@ -108,6 +124,7 @@ export function setupAuth(app: Express) {
     });
   });
 
+  // Get Current User
   app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     res.json(req.user);
