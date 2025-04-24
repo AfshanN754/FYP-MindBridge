@@ -1,6 +1,5 @@
-<<<<<<< HEAD
-# FYP-MindBridge
-=======
+
+
 # 🧠 MindBridge
 
 **MindBridge** is an interactive web-based learning platform designed specifically for autistic children aged **4–7**. It provides a fun, structured, and voice-assisted learning environment to support early development through visual, auditory, and interactive activities.
