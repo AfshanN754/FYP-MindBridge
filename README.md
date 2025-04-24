@@ -63,14 +63,15 @@ Ensure the following tools are installed:
   ```bash
   npm install -g firebase-tools
 🚀 How to Run Locally
-1.Clone the repository
+
+**1.Clone the repository**
 git clone https://github.com/yourusername/mindbridge.git
 cd mindbridge
 
-2.Install dependencies
+**2.Install dependencies**
 npm install
 
-3.Set up Firebase
+**3.Set up Firebase**
 Create a project on Firebase Console
 Go to Project Settings → General → Add Web App
 Copy your Firebase config and add it to a .env file at the root:
@@ -83,15 +84,15 @@ VITE_FIREBASE_STORAGE_BUCKET=your_project_id.appspot.com
 VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
 
-4.Start the server
+**4.Start the server**
 npm run dev
 Open in your browser
 Visit http://localhost:5173 or the port shown in your terminal.
 
-📈 Dataset & Analytics
+**📈 Dataset & Analytics**
 MindBridge simulates real usage data from 500+ game sessions played by 50–60 autistic children to support adaptive learning and progress tracking.
 
-Each record includes:
+**Each record includes:**
 Name (Muslim boy/girl)
 Email
 Age (4–7)
@@ -100,7 +101,7 @@ Time taken to complete the level
 
 This dataset helps refine content delivery and improve feedback for caregivers.
 
-🤝 Contributing
+**🤝 Contributing**
 Want to contribute to MindBridge?
 Fork the repository
 Create a feature branch (git checkout -b feature-name)
@@ -108,5 +109,5 @@ Commit your changes (git commit -m "Add feature")
 Push to your branch (git push origin feature-name)
 Create a Pull Request
 
-💡 Inspiration
+**💡 Inspiration**
 MindBridge was developed as a Final Year Project with the aim of building inclusive, supportive tools for children with autism. Every element — from visuals to voice guidance — is crafted with care, love, and user empathy in mind.
