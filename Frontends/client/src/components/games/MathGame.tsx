@@ -15,9 +15,9 @@ const speak = (text: string) => {
 };
 
 const LEARNING_THEMES = [
-  { id: 1, emoji: "🐻", name: "Bears", color: "bg-amber-700" },
-  { id: 2, emoji: "🚗", name: "Cars", color: "bg-purple-500" },
-  { id: 3, emoji: "🌟", name: "Stars", color: "bg-blue-400" },
+  { id: 1, emoji: "🐻", name: "Bears", color: "bg-red-300" },
+  { id: 2, emoji: "🚗", name: "Cars", color: "bg-orange-300" },
+  { id: 3, emoji: "🌟", name: "Stars", color: "bg-blue-300" },
 ];
 
 type GameMode = "counting" | "practice" | "quiz";
@@ -379,7 +379,7 @@ const QuizMode = () => {
 };
   
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-500 to-purple-500">
+      <div className="min-h-screen bg-gradient-to-b from-purple-100 to-purple-300">
         <div className="container mx-auto p-4 max-w-3xl">
           <h1 className="text-5xl font-bold text-center mb-8 text-purple-600 drop-shadow-md">
             🎮 Play & Learn Math
@@ -388,19 +388,19 @@ const QuizMode = () => {
           {/* Mode Selector */}
           <div className="grid grid-cols-3 gap-4 mb-8">
             <Button
-              className={`text-xl ${mode === "counting" ? "bg-blue-500 text-white" : "bg-gray-100"}`}
+              className={`text-xl ${mode === "counting" ? "bg-blue-500 text-white" : "bg-gray-600"}`}
               onClick={() => setMode("counting")}
             >
               🧮 Counting
             </Button>
             <Button
-              className={`text-xl ${mode === "practice" ? "bg-blue-500 text-white" : "bg-gray-100"}`}
+              className={`text-xl ${mode === "practice" ? "bg-blue-500 text-white" : "bg-gray-600"}`}
               onClick={() => setMode("practice")}
             >
               ➕➖ Practice
             </Button>
             <Button
-              className={`text-xl ${mode === "quiz" ? "bg-blue-500 text-white" : "bg-gray-100"}`}
+              className={`text-xl ${mode === "quiz" ? "bg-blue-500 text-white" : "bg-gray-600"}`}
               onClick={() => setMode("quiz")}
             >
               📝 Quiz
